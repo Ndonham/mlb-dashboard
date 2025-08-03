@@ -36,20 +36,43 @@ def fetch_live_odds():
 def parse_odds_data(data):
     rows = []
     for event in data:
-        if "bookmakers" not in event or len(event["bookmakers"]) == 0:
+        try:
+            if "bookmakers" not in event or not event["bookmakers"]:
+                continue
+            bookmaker = event["bookmakers"][0]
+            if "markets" not in bookmaker or not bookmaker["markets"]:
+                continue
+            outcomes = bookmaker["markets"][0]["outcomes"]
+            if len(outcomes) < 2:
+                continue
+
+            home_team = event.get("home_team", "Unknown")
+            teams = event.get("teams")
+            if not teams or not isinstance(teams, list) or len(teams) < 2 or home_team not in teams:
+                continue
+
+            away_team = teams[1] if teams[0] == home_team else teams[0]
+
+            price_home = next((o["price"] for o in outcomes if o["name"] == home_team), None)
+            price_away = next((o["price"] for o in outcomes if o["name"] == away_team), None)
+
+            if price_home is None or price_away is None:
+                continue
+
+            prob_home = round(100 * (1 / price_home) / ((1 / price_home) + (1 / price_away)), 1)
+            prob_away = round(100 * (1 / price_away) / ((1 / price_home) + (1 / price_away)), 1)
+
+            row = {
+                "Date": event["commence_time"][:10],
+                "Home Team": home_team,
+                "Away Team": away_team,
+                "Win % (Home)": prob_home,
+                "Win % (Away)": prob_away
+            }
+            rows.append(row)
+        except Exception as e:
+            print(f"Skipping event due to error: {e}")
             continue
-        teams = event["teams"]
-        home = event["home_team"]
-        bookmaker = event["bookmakers"][0]
-        outcomes = bookmaker["markets"][0]["outcomes"]
-        row = {
-            "Date": event["commence_time"][:10],
-            "Team 1": outcomes[0]["name"],
-            "Team 2": outcomes[1]["name"],
-            "Win % (Team 1)": round(100 * (1 / outcomes[0]["price"]) / ((1 / outcomes[0]["price"]) + (1 / outcomes[1]["price"])), 1),
-            "Win % (Team 2)": round(100 * (1 / outcomes[1]["price"]) / ((1 / outcomes[0]["price"]) + (1 / outcomes[1]["price"])), 1),
-        }
-        rows.append(row)
     return pd.DataFrame(rows)
 
 # FETCH DATA
