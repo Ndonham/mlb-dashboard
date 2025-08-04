@@ -3,17 +3,21 @@ import pandas as pd
 import plotly.express as px
 import requests
 from datetime import date
+from dotenv import load_dotenv
+import os
 
-# CONFIG
+# Load API key securely from .env
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
+BASE_URL = "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
+
+# Streamlit config
 st.set_page_config(page_title="MLB Forecast Dashboard", layout="wide")
 st.title("⚾ MLB Win Probability Dashboard – 2025 Season")
 st.sidebar.header("Filter Games")
 selected_date = st.sidebar.date_input("Select Date", date.today())
 
-# API CONFIG – replace this with your real key
-API_KEY = "33a57dc4f08555c62310a711f1788a33"
-BASE_URL = "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
-
+# Fetch data from API
 def fetch_live_odds():
     params = {
         "apiKey": API_KEY,
@@ -32,6 +36,7 @@ def fetch_live_odds():
         st.error(f"Failed to fetch data: {e}")
         return []
 
+# Parse data
 def parse_odds_data(data):
     rows = []
     for event in data:
@@ -74,7 +79,7 @@ def parse_odds_data(data):
             continue
     return pd.DataFrame(rows)
 
-# FETCH AND PARSE DATA
+# Fetch and display data
 odds_data = fetch_live_odds()
 df = parse_odds_data(odds_data)
 
