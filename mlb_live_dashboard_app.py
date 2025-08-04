@@ -2,20 +2,16 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import requests
-from datetime import date, timedelta
+from datetime import date
 
 # CONFIG
 st.set_page_config(page_title="MLB Forecast Dashboard", layout="wide")
-
-# APP TITLE
 st.title("⚾ MLB Win Probability Dashboard – 2025 Season")
-
-# SIDEBAR CONFIGURATION
 st.sidebar.header("Filter Games")
 selected_date = st.sidebar.date_input("Select Date", date.today())
 
-# API CONFIG – using user-provided key
-API_KEY = "d9cb26de03b65a0537bff3e5cafdcf45"
+# API CONFIG – replace this with your real key
+API_KEY = "your_api_key_here"
 BASE_URL = "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
 
 def fetch_live_odds():
@@ -25,14 +21,17 @@ def fetch_live_odds():
         "markets": "h2h",
         "dateFormat": "iso"
     }
-    response = requests.get(BASE_URL, params=params)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        st.error("API request failed. Check your key or quota.")
+    try:
+        response = requests.get(BASE_URL, params=params)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"API error {response.status_code}: {response.text}")
+            return []
+    except Exception as e:
+        st.error(f"Failed to fetch data: {e}")
         return []
 
-# PROCESS AND DISPLAY
 def parse_odds_data(data):
     rows = []
     for event in data:
@@ -75,21 +74,22 @@ def parse_odds_data(data):
             continue
     return pd.DataFrame(rows)
 
-# FETCH DATA
+# FETCH AND PARSE DATA
 odds_data = fetch_live_odds()
-if odds_data:
-    df = parse_odds_data(odds_data)
-    df_filtered = df[df["Date"] == selected_date.strftime("%Y-%m-%d")]
-    st.subheader(f"Games on {selected_date}")
-    st.dataframe(df_filtered)
+df = parse_odds_data(odds_data)
 
-    # PLOT CHARTS
-    st.subheader("📊 Win Probability Chart")
-    if not df_filtered.empty:
-        fig = px.bar(df_filtered, x="Win % (Team 1)", y="Team 1", orientation="h",
-                     color="Win % (Team 1)", color_continuous_scale="RdYlGn",
-                     labels={"Win % (Team 1)": "Win Probability (%)", "Team 1": "Matchup"},
-                     height=600)
-        st.plotly_chart(fig, use_container_width=True)
-else:
-    st.warning("No data available for the selected date.")
+if "Date" not in df.columns or df.empty:
+    st.warning("No valid games available from the API.")
+    st.stop()
+
+df_filtered = df[df["Date"] == selected_date.strftime("%Y-%m-%d")]
+st.subheader(f"Games on {selected_date}")
+st.dataframe(df_filtered)
+
+if not df_filtered.empty:
+    st.subheader("📊 Home Team Win Probabilities")
+    fig = px.bar(df_filtered, x="Win % (Home)", y="Home Team", orientation="h",
+                 color="Win % (Home)", color_continuous_scale="RdYlGn",
+                 labels={"Win % (Home)": "Home Win Probability (%)"},
+                 height=600)
+    st.plotly_chart(fig, use_container_width=True)
