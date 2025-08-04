@@ -6,18 +6,18 @@ from datetime import date
 from dotenv import load_dotenv
 import os
 
-# Load API key securely from .env
+# Load environment variables
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
 BASE_URL = "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
 
-# Streamlit config
+# Streamlit setup
 st.set_page_config(page_title="MLB Forecast Dashboard", layout="wide")
 st.title("⚾ MLB Win Probability Dashboard – 2025 Season")
 st.sidebar.header("Filter Games")
 selected_date = st.sidebar.date_input("Select Date", date.today())
 
-# Fetch data from API
+# Fetch data
 def fetch_live_odds():
     params = {
         "apiKey": API_KEY,
@@ -29,6 +29,9 @@ def fetch_live_odds():
         response = requests.get(BASE_URL, params=params)
         if response.status_code == 200:
             return response.json()
+        elif response.status_code == 401 and "OUT_OF_USAGE_CREDITS" in response.text:
+            st.error("⚠️ You’ve reached your API quota. Upgrade your plan or wait for reset.")
+            return []
         else:
             st.error(f"API error {response.status_code}: {response.text}")
             return []
@@ -79,24 +82,33 @@ def parse_odds_data(data):
             continue
     return pd.DataFrame(rows)
 
-# Fetch and display data
+# Run
 odds_data = fetch_live_odds()
 df = parse_odds_data(odds_data)
 
-if "Date" not in df.columns or df.empty:
+if df.empty:
     st.warning("No valid games available from the API.")
     st.stop()
 
-df_filtered = df[df["Date"] == selected_date.strftime("%Y-%m-%d")]
+# Convert date strings to actual datetime for accurate filtering
+df["Date"] = pd.to_datetime(df["Date"])
+selected_date = pd.to_datetime(selected_date)
 
-st.subheader(f"All Upcoming Games")
-st.dataframe(df)
+df_filtered = df[df["Date"].dt.date == selected_date.date()]
 
+st.subheader(f"Games on {selected_date.date()}")
+st.dataframe(df_filtered)
 
 if not df_filtered.empty:
     st.subheader("📊 Home Team Win Probabilities")
-    fig = px.bar(df_filtered, x="Win % (Home)", y="Home Team", orientation="h",
-                 color="Win % (Home)", color_continuous_scale="RdYlGn",
-                 labels={"Win % (Home)": "Home Win Probability (%)"},
-                 height=600)
+    fig = px.bar(
+        df_filtered,
+        x="Win % (Home)",
+        y="Home Team",
+        orientation="h",
+        color="Win % (Home)",
+        color_continuous_scale="RdYlGn",
+        labels={"Win % (Home)": "Home Win Probability (%)"},
+        height=600
+    )
     st.plotly_chart(fig, use_container_width=True)
