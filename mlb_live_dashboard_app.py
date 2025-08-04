@@ -112,3 +112,50 @@ if not df_filtered.empty:
         height=600
     )
     st.plotly_chart(fig, use_container_width=True)
+# Fetch & parse
+odds_data = fetch_live_odds()
+
+if not odds_data:
+    st.warning("⚠️ No raw data returned from the API.")
+    st.stop()
+
+df = parse_odds_data(odds_data)
+
+# Debug: Show parsed raw DataFrame
+st.subheader("🔍 Parsed Data")
+st.write(df)
+
+if df.empty:
+    st.warning("⚠️ Parsed DataFrame is empty after processing.")
+    st.stop()
+
+# Fix date filtering
+df["Date"] = pd.to_datetime(df["Date"])
+selected_date = pd.to_datetime(selected_date)
+
+st.info(f"📅 Selected date: {selected_date.date()}")
+st.info(f"📅 Dates in data: {df['Date'].dt.date.unique().tolist()}")
+
+df_filtered = df[df["Date"].dt.date == selected_date.date()]
+
+# Display filtered games
+st.subheader(f"🎯 Games on {selected_date.date()}")
+st.dataframe(df_filtered)
+
+if df_filtered.empty:
+    st.warning("🚫 No games match the selected date.")
+    st.stop()
+
+# Plot
+st.subheader("📊 Home Team Win Probabilities")
+fig = px.bar(
+    df_filtered,
+    x="Win % (Home)",
+    y="Home Team",
+    orientation="h",
+    color="Win % (Home)",
+    color_continuous_scale="RdYlGn",
+    labels={"Win % (Home)": "Home Win Probability (%)"},
+    height=600
+)
+st.plotly_chart(fig, use_container_width=True)
