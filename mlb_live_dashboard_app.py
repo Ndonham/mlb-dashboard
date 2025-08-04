@@ -11,7 +11,7 @@ st.sidebar.header("Filter Games")
 selected_date = st.sidebar.date_input("Select Date", date.today())
 
 # API CONFIG – replace this with your real key
-API_KEY = "your_api_key_here"
+API_KEY = "d9cb26de03b65a0537bff3e5cafdcf45"
 BASE_URL = "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
 
 def fetch_live_odds():
