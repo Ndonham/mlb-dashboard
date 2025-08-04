@@ -1,3 +1,15 @@
+   ...down to the first `plotly_chart(fig, use_container_width=True)`.
+
+2. **Keep only the second block** — the one that includes:
+   - the debug output
+   - date info
+   - correct final filtered plot
+
+---
+
+### ✅ Clean Final Version (You Can Copy-Paste This)
+
+```python
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -11,13 +23,11 @@ load_dotenv()
 API_KEY = os.getenv("API_KEY")
 BASE_URL = "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
 
-# Streamlit setup
 st.set_page_config(page_title="MLB Forecast Dashboard", layout="wide")
 st.title("⚾ MLB Win Probability Dashboard – 2025 Season")
 st.sidebar.header("Filter Games")
 selected_date = st.sidebar.date_input("Select Date", date.today())
 
-# Fetch data
 def fetch_live_odds():
     params = {
         "apiKey": API_KEY,
@@ -39,7 +49,6 @@ def fetch_live_odds():
         st.error(f"Failed to fetch data: {e}")
         return []
 
-# Parse data
 def parse_odds_data(data):
     rows = []
     for event in data:
@@ -82,36 +91,6 @@ def parse_odds_data(data):
             continue
     return pd.DataFrame(rows)
 
-# Run
-odds_data = fetch_live_odds()
-df = parse_odds_data(odds_data)
-
-if df.empty:
-    st.warning("No valid games available from the API.")
-    st.stop()
-
-# Convert date strings to actual datetime for accurate filtering
-df["Date"] = pd.to_datetime(df["Date"])
-selected_date = pd.to_datetime(selected_date)
-
-df_filtered = df[df["Date"].dt.date == selected_date.date()]
-
-st.subheader(f"Games on {selected_date.date()}")
-st.dataframe(df_filtered)
-
-if not df_filtered.empty:
-    st.subheader("📊 Home Team Win Probabilities")
-    fig = px.bar(
-        df_filtered,
-        x="Win % (Home)",
-        y="Home Team",
-        orientation="h",
-        color="Win % (Home)",
-        color_continuous_scale="RdYlGn",
-        labels={"Win % (Home)": "Home Win Probability (%)"},
-        height=600
-    )
-    st.plotly_chart(fig, use_container_width=True)
 # Fetch & parse
 odds_data = fetch_live_odds()
 
@@ -121,7 +100,6 @@ if not odds_data:
 
 df = parse_odds_data(odds_data)
 
-# Debug: Show parsed raw DataFrame
 st.subheader("🔍 Parsed Data")
 st.write(df)
 
@@ -129,7 +107,6 @@ if df.empty:
     st.warning("⚠️ Parsed DataFrame is empty after processing.")
     st.stop()
 
-# Fix date filtering
 df["Date"] = pd.to_datetime(df["Date"])
 selected_date = pd.to_datetime(selected_date)
 
@@ -138,7 +115,6 @@ st.info(f"📅 Dates in data: {df['Date'].dt.date.unique().tolist()}")
 
 df_filtered = df[df["Date"].dt.date == selected_date.date()]
 
-# Display filtered games
 st.subheader(f"🎯 Games on {selected_date.date()}")
 st.dataframe(df_filtered)
 
@@ -146,7 +122,6 @@ if df_filtered.empty:
     st.warning("🚫 No games match the selected date.")
     st.stop()
 
-# Plot
 st.subheader("📊 Home Team Win Probabilities")
 fig = px.bar(
     df_filtered,
