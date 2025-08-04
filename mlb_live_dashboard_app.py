@@ -88,8 +88,10 @@ if "Date" not in df.columns or df.empty:
     st.stop()
 
 df_filtered = df[df["Date"] == selected_date.strftime("%Y-%m-%d")]
-st.subheader(f"Games on {selected_date}")
-st.dataframe(df_filtered)
+
+st.subheader(f"All Upcoming Games")
+st.dataframe(df)
+
 
 if not df_filtered.empty:
     st.subheader("📊 Home Team Win Probabilities")
