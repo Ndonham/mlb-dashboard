@@ -1,15 +1,3 @@
-   ...down to the first `plotly_chart(fig, use_container_width=True)`.
-
-2. **Keep only the second block** — the one that includes:
-   - the debug output
-   - date info
-   - correct final filtered plot
-
----
-
-### ✅ Clean Final Version (You Can Copy-Paste This)
-
-```python
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -18,16 +6,18 @@ from datetime import date
 from dotenv import load_dotenv
 import os
 
-# Load environment variables
+# Load environment variables (for API key security)
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
 BASE_URL = "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
 
+# Streamlit UI Setup
 st.set_page_config(page_title="MLB Forecast Dashboard", layout="wide")
 st.title("⚾ MLB Win Probability Dashboard – 2025 Season")
 st.sidebar.header("Filter Games")
 selected_date = st.sidebar.date_input("Select Date", date.today())
 
+# Fetch live odds from API
 def fetch_live_odds():
     params = {
         "apiKey": API_KEY,
@@ -40,7 +30,7 @@ def fetch_live_odds():
         if response.status_code == 200:
             return response.json()
         elif response.status_code == 401 and "OUT_OF_USAGE_CREDITS" in response.text:
-            st.error("⚠️ You’ve reached your API quota. Upgrade your plan or wait for reset.")
+            st.error("⚠️ API quota reached. Upgrade plan or wait for reset.")
             return []
         else:
             st.error(f"API error {response.status_code}: {response.text}")
@@ -49,6 +39,7 @@ def fetch_live_odds():
         st.error(f"Failed to fetch data: {e}")
         return []
 
+# Parse raw odds data into DataFrame
 def parse_odds_data(data):
     rows = []
     for event in data:
@@ -64,14 +55,12 @@ def parse_odds_data(data):
 
             home_team = event.get("home_team", "Unknown")
             teams = event.get("teams")
-            if not teams or not isinstance(teams, list) or len(teams) < 2 or home_team not in teams:
+            if not teams or len(teams) < 2 or home_team not in teams:
                 continue
-
             away_team = teams[1] if teams[0] == home_team else teams[0]
 
             price_home = next((o["price"] for o in outcomes if o["name"] == home_team), None)
             price_away = next((o["price"] for o in outcomes if o["name"] == away_team), None)
-
             if price_home is None or price_away is None:
                 continue
 
@@ -91,15 +80,17 @@ def parse_odds_data(data):
             continue
     return pd.DataFrame(rows)
 
-# Fetch & parse
-odds_data = fetch_live_odds()
+# === Main Execution ===
 
+# Fetch and parse data
+odds_data = fetch_live_odds()
 if not odds_data:
     st.warning("⚠️ No raw data returned from the API.")
     st.stop()
 
 df = parse_odds_data(odds_data)
 
+# Debug output
 st.subheader("🔍 Parsed Data")
 st.write(df)
 
@@ -107,6 +98,7 @@ if df.empty:
     st.warning("⚠️ Parsed DataFrame is empty after processing.")
     st.stop()
 
+# Date processing and filtering
 df["Date"] = pd.to_datetime(df["Date"])
 selected_date = pd.to_datetime(selected_date)
 
@@ -115,6 +107,7 @@ st.info(f"📅 Dates in data: {df['Date'].dt.date.unique().tolist()}")
 
 df_filtered = df[df["Date"].dt.date == selected_date.date()]
 
+# Display filtered games
 st.subheader(f"🎯 Games on {selected_date.date()}")
 st.dataframe(df_filtered)
 
@@ -122,6 +115,7 @@ if df_filtered.empty:
     st.warning("🚫 No games match the selected date.")
     st.stop()
 
+# Plot win probabilities
 st.subheader("📊 Home Team Win Probabilities")
 fig = px.bar(
     df_filtered,
